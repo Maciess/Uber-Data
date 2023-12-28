@@ -1,0 +1,83 @@
+---
+title: "| ![](logo.png){width=6in} \\vspace{0.2in} \n`r format(params$term)` Project proposal\n \\vspace{0.1in} "
+subtitle: "Uber app delivery time estimation"
+author: 
+  - "Maciej Szczutko"
+  - "Ewa Stebel"
+date: "`r Sys.time()`"
+output: pdf_document
+params:
+  term: ""
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+```{r data}
+library(kableExtra)
+library(dplyr)
+library(ggplot2)
+UberDataset <- read.csv("F:/Nagrania_Z_wykladow/Semiparametric_regression/Project/UberDataset.csv")
+```
+
+\newpage
+
+# Introduction
+
+In our proposal we would like to describe the data we choose for Semiparametric regression final project. Course is conducted by Prof. J. Harezlak. Our goal is to explore the data and build a model which will help us answer several questions which we will propose in the latter part of this proposal. 
+
+# Data description
+
+```{r display_data}
+set.seed(42)
+kable(slice_sample(UberDataset, n=5), booktabs = TRUE) %>%
+  kable_styling(font_size = 8, latex_options = "HOLD_position")
+```
+
+We choose [UberDataset](https://www.kaggle.com/datasets/bhanupratapbiswas/uber-data-analysis/data) from [Kaggle](https://www.kaggle.com) website. The dataset contains information about the provision of transportation services by Uber - a multinational transportation network company that operates a platform connecting riders with drivers through a mobile app. Data includes information on trips made in the USA in $2016$ year. This dataset consists of $1156$ observation of the following $7$ columns:
+
+	1. start date - date and time of service start,
+	2. end date - date and time of service end,
+	3. category - categorical variable, division of the trip into private and business,
+	4. start - location - city or district -  of the starting point,
+	5. end - location - city or district - of the final point,
+	6. miles - distance travelled in miles,
+	7. purpose - categorical variable, purpose of the transport.
+	
+
+
+
+# Goal
+
+The first thing we would like to do is standard data preprocessing to deeper understanding and find possible garbage in data (non realistic delivery time, NA values etc.). 
+We want to built model (or models) to estimate delivery time. For the simplest model, with one predictor, we try add some smooth terms and compare results. As the data consist observation for various location we want to analyse them by some region e.g. New York should be consider separately from Carry district. Also we would like to test relation between daytime and time of service using models with interactions. Moreover we suspect there the category of service has no significant impact on delivery time. We will use statistical tests to confirm (or reject) this hypothesis.
+
+
+```{r calculate-service-time}
+df <- UberDataset
+
+### unify DATE FORMAT ###
+df$START_DATE <- gsub("/", "-", df$START_DATE)
+df$END_DATE <- gsub("/", "-", df$END_DATE)
+
+df$START_DATE <- as.POSIXct(df$START_DATE, format = "%m-%d-%Y %H:%M")
+df$END_DATE <- as.POSIXct(df$END_DATE, format = "%m-%d-%Y %H:%M")
+df$SERVICE_TIME <- as.numeric(df$END_DATE - df$START_DATE) / 60
+```
+
+
+```{r filter-local-data}
+filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham") | STOP %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham")) %>% filter(MILES < 100)
+
+```
+
+```{r simple-plot}
+
+p <- ggplot(filtered_destination, aes(x=MILES, y=SERVICE_TIME, colour = factor(START)))
+p + geom_point()
+
+```
+
+
