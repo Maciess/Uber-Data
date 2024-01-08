@@ -23,7 +23,8 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 library(kableExtra)
 library(dplyr)
 library(ggplot2)
-UberDataset <- read.csv("C:/Users/48503/Documents/studia/semi parametric regression/Projekt/UberDataset.csv")
+library(mgcv)
+UberDataset <- read.csv("UberDataset.csv")
 ```
 
 \newpage
@@ -94,14 +95,18 @@ We added two columns to the raw data - Service time, which shows the duration of
 
 ```{r data-preprocessing}
 #CLEANSING
+df <- filtered_destination
+
 df$PURPOSE[which(df$PURPOSE=="")] = "Unknown"
-df = df[-1156,] #deleting summary
+df = df[-dim(df)[1],] #deleting summary
 
 # DAYTIME
 library(lubridate)
 hours = hour(ymd_hms(df$END_DATE))
 
-hours[which(is.na(hours))]=-1
+any(is.na(hours)) ## FALSE
+hours[which(is.na(hours))]=-1 # seems to be redundant
+
 for (i in 1:length(df$END_DATE)){
   if (hours[i] <= 5){
     df$DAY_TIME[i]="Night"
@@ -116,7 +121,73 @@ for (i in 1:length(df$END_DATE)){
   }
   
 }
+
+
+for (i in 1:length(df$END_DATE)){
+  if ( 7 <= hours[i]  &  hours[i] <= 22){
+    df$DAY_TIME[i]="2"
+  }else {
+    df$DAY_TIME[i] = "1"
+  }
+  
+}
+
 summary(df)
 ```
 
+```{r plot-fill-by-hours}
+
+df$HOUR <- hours
+
+p <- ggplot(df, aes(x=MILES, y=SERVICE_TIME, colour = factor(DAY_TIME)))
+p + geom_point()
+
+```
+
+```{r boxplot-by-hours}
+p <- ggplot(df, aes(x=factor(HOUR), y=SERVICE_TIME))
+p + geom_boxplot()
+
+```
+
+
 In order to better understand the data, we have superimposed the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
+
+
+```{r simple-reression-model}
+
+simlest_model <- lm(data = df, SERVICE_TIME~MILES)
+summary(simlest_model)
+
+p <- ggplot(df, aes(x=MILES, y=SERVICE_TIME))
+p + geom_point(colour="darkred")+
+  geom_abline(intercept = coefficients(simlest_model)[1], slope = coefficients(simlest_model)[2])
+
+```
+
+
+```{r gam-simplest-model}
+y <- df$SERVICE_TIME
+x <- df$MILES
+
+xg <- seq(min(x), max(x), length = 1001)
+
+gam_model <- gam(y ~ s(x))
+
+summary(gam_model)
+
+predicted <- predict(gam_model, newdata = data.frame(x = xg))
+
+
+orginal_points = data.frame(Y = y, X=x)
+predicted_points = data.frame(Y = predicted, X=xg)
+
+
+
+ggplot() +
+  geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
+  geom_line(data = predicted_points, aes(x=X, y=Y), colour = "darkblue")
+ 
+
+```
+
