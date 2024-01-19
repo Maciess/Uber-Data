@@ -62,7 +62,6 @@ We want to built model (or models) to estimate delivery time.  Delivery time var
 
 ```{r calculate-service-time}
 df <- UberDataset
-View(df)
 
 ### unify DATE FORMAT ###
 df$START_DATE <- gsub("/", "-", df$START_DATE)
@@ -75,7 +74,7 @@ df$SERVICE_TIME <- as.numeric(df$END_DATE - df$START_DATE) / 60
 
 
 ```{r filter-local-data}
-filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham") | STOP %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham")) %>% filter(MILES < 100)
+filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham") | STOP %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham")) %>% filter(MILES < 20)
 
 ```
 
@@ -92,6 +91,13 @@ To prepare the data for modeling, we must first clean it.  To do this, we replac
 We added two columns to the raw data - Service time, which shows the duration of the service in minutes. To do this, we first standardized the format of the start and end date. Second added column is Daytime column, which indicates whether the service took place in the morning, evening, etc., we believe this variable can be significant for modeling.The short summary of data after cleansing is presented below.
 
 
+
+
+```{r model-with-hours}
+
+##ewa
+
+```
 
 ```{r data-preprocessing}
 #CLEANSING
@@ -124,7 +130,7 @@ for (i in 1:length(df$END_DATE)){
 
 
 for (i in 1:length(df$END_DATE)){
-  if ( 7 <= hours[i]  &  hours[i] <= 22){
+  if ( 15 <= hours[i]  &  hours[i] <= 18){
     df$DAY_TIME[i]="2"
   }else {
     df$DAY_TIME[i] = "1"
@@ -157,13 +163,20 @@ In order to better understand the data, we have superimposed the locations from 
 ```{r simple-reression-model}
 
 simlest_model <- lm(data = df, SERVICE_TIME~MILES)
+
+
+
 summary(simlest_model)
+
 
 p <- ggplot(df, aes(x=MILES, y=SERVICE_TIME))
 p + geom_point(colour="darkred")+
   geom_abline(intercept = coefficients(simlest_model)[1], slope = coefficients(simlest_model)[2])
 
 ```
+
+
+
 
 
 ```{r gam-simplest-model}
@@ -173,6 +186,7 @@ x <- df$MILES
 xg <- seq(min(x), max(x), length = 1001)
 
 gam_model <- gam(y ~ s(x))
+linear_model_using_gam <- gam(y~x)
 
 summary(gam_model)
 
@@ -190,4 +204,56 @@ ggplot() +
  
 
 ```
+
+```{r test-for-linearity}
+
+anova(linear_model_using_gam, gam_model, test="F")$"Pr(>F)"[2]
+
+## maciek opisze co jest uzywane w testowaniu i jakie som wnioski
+
+```
+
+```{r gam-with-interactions-model}
+y <- df$SERVICE_TIME
+x <- df$MILES
+interaction_term <- df$DAY_TIME
+
+xg <- seq(min(x), max(x), length = 1001)
+day_time_1  <- rep(1, length = 1001)
+day_time_2  <- rep(2, length = 1001)
+
+gam_model_inter <- gam(y ~ s(x, by = factor(interaction_term)))
+
+summary(gam_model)
+
+predicted_1 <- predict(gam_model, newdata = data.frame(x = xg, interaction_term = day_time_1))
+predicted_2 <- predict(gam_model, newdata = data.frame(x = xg, interaction_term = day_time_2))
+
+
+orginal_points = data.frame(Y = y, X=x)
+predicted_points = data.frame(Y1 = predicted_1, Y2=predicted_2, X=xg)
+
+
+
+ggplot() +
+  geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
+  geom_line(data = predicted_points, aes(x=X, y=Y1), colour = "darkblue")+
+  geom_line(data = predicted_points, aes(x=X, y=Y2), colour = "darkgreen")
+ 
+
+```
+
+
+
+
+
+```{r cv-for-all-models}
+#maciek
+
+##https://www.rdocumentation.org/packages/DAAG/versions/0.98/topics/cv.lm
+##https://rdrr.io/cran/gamclass/man/CVgam.html
+
+
+```
+
 
