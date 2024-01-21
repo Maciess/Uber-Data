@@ -93,11 +93,7 @@ We added two columns to the raw data - Service time, which shows the duration of
 
 
 
-```{r model-with-hours}
 
-##ewa
-
-```
 
 ```{r data-preprocessing}
 #CLEANSING
@@ -159,6 +155,12 @@ p + geom_boxplot()
 
 In order to better understand the data, we have superimposed the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
 
+Once the data has been cleaned and subjected to preliminary analysis, we can begin to build models that predict service times. The first basic model we will create is a linear regression model with an explanatory variable - service time and an explanatory variable - miles. The linear regression model has the form 
+$$ f(X) = \beta_0 + \sum_{j=1}^{p} x_j \beta_j, $$
+where the $\beta_j$ ' are unknow parameters or coefficients.
+
+This is a basic method, but allows us an easy interpretation of regressors effects.
+
 
 ```{r simple-reression-model}
 
@@ -174,7 +176,21 @@ p + geom_point(colour="darkred")+
   geom_abline(intercept = coefficients(simlest_model)[1], slope = coefficients(simlest_model)[2])
 
 ```
+Next, we use gam function from mgcv package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor. Below is presented an example of the model GAM.
+$$log\{E(y_i\} = \alpha + f_1(x_{1i}) + f_2(x_{2i}),$$
+where $f_1$ and $f_2$ are smooth funcyions of covariated $x_1$ and $x_2$. The log is an example of a link function. 
 
+First, we constructed GAM model using only miles as explanatory variable. In our second model we combined miles and hours as explanatory variables. The best model for these two variables is the model where we used the miles ad smoothing term.
+
+
+
+
+```{r model-with-hours}
+##ewa
+gam_model_hours <- gam(df$SERVICE_TIME ~ s(df$MILES) + df$HOUR)
+summary(gam_model_hours)
+
+```
 
 
 
@@ -204,6 +220,9 @@ ggplot() +
  
 
 ```
+
+
+
 
 ```{r test-for-linearity}
 
@@ -241,6 +260,23 @@ ggplot() +
   geom_line(data = predicted_points, aes(x=X, y=Y2), colour = "darkgreen")
  
 
+```
+To see if the other variables in the data set affect service time we used the function step.Gam from the gam library. This method creates all possible models based on possible variables and calculates the AIC for each model. The result is a model that uses the variables hour, start, stop and miles as smoothing term.
+
+```{r step.gam-all-variables}
+fitInitial = gam(y ~ df$MILES + df$HOUR + df$CATEGORY+df$START +df$STOP +df$PURPOSE)
+
+stepFit <- step.Gam(fitInitial,
+                    scope = list("HOUR" = ~ 1 + df$HOUR + s(df$HOUR,2),
+                                 "MILES" = ~ 1 + df$MILES + s(df$MILES,2),
+                                 "CATEGORY" = ~ 1 + df$CATEGORY,
+                                 "START" = ~ 1 + df$START,
+                                 "STOP" = ~ 1 + df$STOP,
+                                 "PURPOSE" = ~ 1 + df$PURPOSE))
+print(names(stepFit$"model")[-1])
+
+step_gam_model <- gam(y~ df$HOUR + s(df$MILES, 2) + df$START+ df$STOP)
+summary(step_gam_model)
 ```
 
 
