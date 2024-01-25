@@ -24,6 +24,7 @@ library(kableExtra)
 library(dplyr)
 library(ggplot2)
 library(mgcv)
+library(gam)
 source("helpers.R")
 library(Metrics)
 UberDataset <- read.csv("UberDataset.csv")
@@ -37,7 +38,7 @@ In our proposal we would like to describe the data we choose for Semiparametric 
 
 # Data description
 
-```{r display_data}
+```{r display-data}
 set.seed(42)
 kable(slice_sample(UberDataset, n=5), booktabs = TRUE) %>%
   kable_styling(font_size = 8, latex_options = "HOLD_position")
@@ -243,7 +244,7 @@ xg <- seq(min(x), max(x), length = 1001)
 day_time_1  <- rep(1, length = 1001)
 day_time_2  <- rep(2, length = 1001)
 
-gam_model_inter <- gam(y ~ s(x, by = factor(interaction_term)))
+gam_model_inter <- mgcv::gam(y ~ s(x, by = factor(interaction_term)))
 
 summary(gam_model)
 
