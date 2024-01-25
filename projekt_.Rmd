@@ -24,6 +24,8 @@ library(kableExtra)
 library(dplyr)
 library(ggplot2)
 library(mgcv)
+source("helpers.R")
+library(Metrics)
 UberDataset <- read.csv("UberDataset.csv")
 ```
 
@@ -283,12 +285,35 @@ summary(step_gam_model)
 
 
 
-```{r cv-for-all-models}
-#maciek
+```{r cv-for-gam-models}
+#MACIEK
+y <- df$SERVICE_TIME
+x <- df$MILES
+
+k <- 5
+
+data_for_model <- data.frame(x=x, y=y)
+resulting_folds <- split_data_into_folds(data_for_model, k)
+
+
+for(i in 1:k)
+{
+  test_set <- resulting_folds[[i]]
+  
+  
+  train_data <- resulting_folds[ seq(k)[-i]]
+  train_data <- do.call(rbind, train_data)
+
+  gam_model_for_folds <- gam(data = train_data, y ~ s(x))
+  predicted <- predict(gam_model_for_folds, newdata = test_set)
+  
+  RMSE <- Metrics::rmse(actual = test_set$y, predicted = predicted)
+  print(RMSE)
+  #What metrics we want to calculate?
+}
 
 ##https://www.rdocumentation.org/packages/DAAG/versions/0.98/topics/cv.lm
 ##https://rdrr.io/cran/gamclass/man/CVgam.html
-
 
 ```
 
