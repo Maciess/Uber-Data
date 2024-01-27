@@ -6,9 +6,9 @@ author:
 - Ewa Stebel
 date: "`r Sys.time()`"
 output:
+  pdf_document: default
   html_document:
     df_print: paged
-  pdf_document: default
 subtitle: Uber app delivery time estimation
 params:
   term: ''
@@ -76,6 +76,10 @@ df$SERVICE_TIME <- as.numeric(df$END_DATE - df$START_DATE) / 60
 ```
 
 
+## Preliminary analysis
+
+TODO SECTION: Add some basic plots e.g. location popularity chart etc.
+
 ```{r filter-local-data}
 filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham") | STOP %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham")) %>% filter(MILES < 20)
 
@@ -88,13 +92,12 @@ p + geom_point()
 
 ```
 
-#Data cleansing  
-To prepare the data for modeling, we must first clean it.  To do this, we replace the NA values in the Purpose column with "Unknown". Other columns do not show missing values, however the start and stop columns show some "Unknown location" values. We also remove the last row of data, which is the summary.
 
-We added two columns to the raw data - Service time, which shows the duration of the service in minutes. To do this, we first standardized the format of the start and end date. Second added column is Daytime column, which indicates whether the service took place in the morning, evening, etc., we believe this variable can be significant for modeling.The short summary of data after cleansing is presented below.
+# Data cleaning  
 
+To prepare the data for modelling, we must first clean it. To do this, we replace the NA values in the Purpose column with "Unknown". Other columns do not show missing values, however the start and stop columns show some "Unknown location" values. We also remove the last row of data, which is the summary.
 
-
+We added two columns to the raw data - Service time, which shows the duration of the service in minutes. To do this, we first standardized the format of the start and end date. Second added column is Daytime column, which indicates whether the service took place in the morning, evening, etc., we believe this variable can be significant for modelling. The short summary of data after cleansing is presented below.
 
 
 
@@ -160,32 +163,26 @@ In order to better understand the data, we have superimposed the locations from 
 
 Once the data has been cleaned and subjected to preliminary analysis, we can begin to build models that predict service times. The first basic model we will create is a linear regression model with an explanatory variable - service time and an explanatory variable - miles. The linear regression model has the form 
 $$ f(X) = \beta_0 + \sum_{j=1}^{p} x_j \beta_j, $$
-where the $\beta_j$ ' are unknow parameters or coefficients.
+where the $\beta_j$ ' are unknown parameters or coefficients.
 
 This is a basic method, but allows us an easy interpretation of regressors effects.
 
 
 ```{r simple-reression-model}
-
 simlest_model <- lm(data = df, SERVICE_TIME~MILES)
 
-
-
 summary(simlest_model)
-
 
 p <- ggplot(df, aes(x=MILES, y=SERVICE_TIME))
 p + geom_point(colour="darkred")+
   geom_abline(intercept = coefficients(simlest_model)[1], slope = coefficients(simlest_model)[2])
 
 ```
-Next, we use gam function from mgcv package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor. Below is presented an example of the model GAM.
+Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor. Below is presented an example of the model GAM.
 $$log\{E(y_i\} = \alpha + f_1(x_{1i}) + f_2(x_{2i}),$$
-where $f_1$ and $f_2$ are smooth funcyions of covariated $x_1$ and $x_2$. The log is an example of a link function. 
+where $f_1$ and $f_2$ are smooth functions of covariates $x_1$ and $x_2$. The log is an example of a link function. 
 
 First, we constructed GAM model using only miles as explanatory variable. In our second model we combined miles and hours as explanatory variables. The best model for these two variables is the model where we used the miles ad smoothing term.
-
-
 
 
 ```{r model-with-hours}
@@ -215,13 +212,9 @@ predicted <- predict(gam_model, newdata = data.frame(x = xg))
 orginal_points = data.frame(Y = y, X=x)
 predicted_points = data.frame(Y = predicted, X=xg)
 
-
-
 ggplot() +
   geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
   geom_line(data = predicted_points, aes(x=X, y=Y), colour = "darkblue")
- 
-
 ```
 
 
@@ -240,31 +233,31 @@ y <- df$SERVICE_TIME
 x <- df$MILES
 interaction_term <- df$DAY_TIME
 
+gam_model_inter <- mgcv::gam(y ~ s(x, by = factor(interaction_term)))
+
+summary(gam_model)
+```
+
+```{r gam-with-interactions-model-plots}
 xg <- seq(min(x), max(x), length = 1001)
 day_time_1  <- rep(1, length = 1001)
 day_time_2  <- rep(2, length = 1001)
 
-gam_model_inter <- mgcv::gam(y ~ s(x, by = factor(interaction_term)))
-
-summary(gam_model)
-
 predicted_1 <- predict(gam_model, newdata = data.frame(x = xg, interaction_term = day_time_1))
 predicted_2 <- predict(gam_model, newdata = data.frame(x = xg, interaction_term = day_time_2))
 
-
 orginal_points = data.frame(Y = y, X=x)
 predicted_points = data.frame(Y1 = predicted_1, Y2=predicted_2, X=xg)
-
-
 
 ggplot() +
   geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
   geom_line(data = predicted_points, aes(x=X, y=Y1), colour = "darkblue")+
   geom_line(data = predicted_points, aes(x=X, y=Y2), colour = "darkgreen")
- 
 
 ```
-To see if the other variables in the data set affect service time we used the function step.Gam from the gam library. This method creates all possible models based on possible variables and calculates the AIC for each model. The result is a model that uses the variables hour, start, stop and miles as smoothing term.
+
+
+To see if the other variables in the data set affect service time we used the function step. Gam from the gam library. This method creates all possible models based on possible variables and calculates the **AIC** for each model. The result is a model that uses the variables hour, start, stop and miles as smoothing term.
 
 ```{r step.gam-all-variables}
 fitInitial = gam(y ~ df$MILES + df$HOUR + df$CATEGORY+df$START +df$STOP +df$PURPOSE)
@@ -283,11 +276,12 @@ summary(step_gam_model)
 ```
 
 
+## Metric evaluation for differents model
 
+We use k-folds cross-validation to evaluate **RMSE**, $R^2$, and their average. In this approach, we split previously filtered data set, into $k$ disjoint subset with (almost) equal size. The model is then trained $k$ times, each time using $k-1$ folds as the training set and the remaining fold as the test set. This ensures that every data point is used for testing exactly once. For ordinary linear model we have ready to use solution, but for gam model we need to implement such functionality (see helpers.R for implementation). 
 
 
 ```{r cv-for-gam-models}
-#MACIEK
 y <- df$SERVICE_TIME
 x <- df$MILES
 
@@ -295,6 +289,8 @@ k <- 5
 
 data_for_model <- data.frame(x=x, y=y)
 resulting_folds <- split_data_into_folds(data_for_model, k)
+
+dfWithMetrics <- data.frame(RMSE = c(), R_squared = c())
 
 
 for(i in 1:k)
@@ -305,11 +301,14 @@ for(i in 1:k)
   train_data <- resulting_folds[ seq(k)[-i]]
   train_data <- do.call(rbind, train_data)
 
-  gam_model_for_folds <- gam(data = train_data, y ~ s(x))
+  gam_model_for_folds <- mgcv::gam(data = train_data, y ~ s(x))
   predicted <- predict(gam_model_for_folds, newdata = test_set)
   
   RMSE <- Metrics::rmse(actual = test_set$y, predicted = predicted)
-  print(RMSE)
+  R_squared <- summary(gam_model_for_folds)$r.sq
+  dfWithMetrics <- rbind(dfWithMetrics, c(RMSE, R_squared))  
+  
+  
   #What metrics we want to calculate?
 }
 
