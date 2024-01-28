@@ -338,6 +338,11 @@ for(i in 1:k)
 
 ```
 
+```{r fix-data-types}
+dfWithMetrics$RMSE <- as.numeric(dfWithMetrics$RMSE)
+dfWithMetrics$R_squared <- as.numeric(dfWithMetrics$R_squared)
+```
+
 
 ```{r plot-metrics}
 colnames(dfWithMetrics) <- c("RMSE", "R_squared", "Fold_number", "Model")
@@ -345,13 +350,14 @@ colnames(dfWithMetrics) <- c("RMSE", "R_squared", "Fold_number", "Model")
 RMSE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = RMSE, color = Model, shape = Model, group = Model))+
   ggtitle("RMSE per fold")+
   geom_point()+
-  geom_line(aes(y = ave(RMSE, Model, FUN = median, linetype="dashed")))
+  geom_line(aes(y = ave(RMSE, Model, FUN = mean, linetype="dashed")))
+
 
 
 R_squared_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = R_squared, color = Model, group = Model, shape = Model))+
   ggtitle(TeX("$R^2$ per fold"))+
   geom_point()+
-  geom_line(aes(y = ave(R_squared, Model, FUN = median, linetype="dashed")))
+  geom_line(aes(y = ave(R_squared, Model, FUN = mean, linetype="dashed")))
 
 grid.arrange(RMSE_plot, R_squared_plot, ncol = 2)
 
