@@ -42,7 +42,7 @@ In our proposal we would like to describe the data we choose for Semiparametric 
 
 ```{r display-data}
 set.seed(42)
-kable(slice_sample(UberDataset, n=5), booktabs = TRUE) %>%
+kbl(slice_sample(UberDataset, n=5), booktabs = TRUE) %>%
   kable_styling(font_size = 8, latex_options = "HOLD_position")
 ```
 
@@ -90,7 +90,7 @@ Analyzing the locations from the start and stop variables, we see that the frequ
 
 t1 = table(factor(df$START))
 t2 = table(factor(df$STOP))
-sort(t2, decreasing = TRUE)
+# sort(t2, decreasing = TRUE)
 
 top15_column1 <- head(sort(t1, decreasing = TRUE), 15)
 top15_column2 <- head(sort(t2, decreasing = TRUE), 15)
@@ -114,6 +114,19 @@ filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex"
 We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
 
 
+```{r simple-plot}
+
+p <- ggplot(filtered_destination, aes(x=MILES, y=SERVICE_TIME, colour = factor(START)))
+p + geom_point()
+
+```
+We also see that some locations occur more frequently than others, so we also created a histogram of the popularity of a location.
+
+```{r start-location-hist2}
+ggplot(filtered_destination, aes(x = START)) +
+  geom_bar(fill = "blue", color = "black", alpha = 0.7)
+```
+We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
 
 # Data cleaning  
 
@@ -314,14 +327,39 @@ summary(step_gam_model)
 ```
 
 
-## Metric evaluation for differents model
+## Metric evaluation for different models
 
-We use k-folds cross-validation to evaluate **RMSE**, $R^2$, and their average. In this approach, we split previously filtered data set, into $k$ disjoint subset with (almost) equal size. The model is then trained $k$ times, each time using $k-1$ folds as the training set and the remaining fold as the test set. This ensures that every data point is used for testing exactly once. For ordinary linear model we have ready to use solution, but for gam model we need to implement such functionality (see helpers.R for implementation). 
+We use k-folds cross-validation to evaluate RMSE, MAE and $R^2$. In this approach, we split previously filtered data set, into $k$ disjoint subset with (almost) equal size. The model is then trained $k$ times, each time using $k-1$ folds as the training set and the remaining fold as the test set. This ensures that every data point is used for testing exactly once. For ordinary linear model we have ready to use solution, but for gam model we need to implement such functionality (see helpers.R for implementation). We compare $4$ models:
 
+Model name | Model formula
+------------- | -------------
+LM | SERVICE_TIME ~ MILES
+LM with interactions | SERVICE_TIME ~ MILES * DAY_TIME
+GAM | SERVICE_TIME ~ s(MILES)
+GAM with interactions | SERVICE_TIME ~ s(MILES * DAY_TIME)
+
+### Metrics definitons 
+
+$$
+MAE = \frac{1}{n} \sum_{i=1}^n\left|y_i-\hat{y}_i\right|
+$$
+
+
+$$
+RMSE =  \sqrt{\frac{1}{n}\sum_{i=1}^n\left (  y_i-\hat{y}_i\right)^2}
+$$
+$$
+\mathrm{R}^2=1-\frac{\text { Unexplained Variation }}{\text { Total Variation }}
+$$
+
+It's not official $R^2$ formula, rather intuition that we should have during evaluation of model performance. First two metrics inform us about predictive power of our model (but in slightly different way). We want to minimize them both. $R^2$ tell how many percent of variance in data we explain (higher=better), but it shouldn't be use as base criterium for model comparison with different numbers of features (always increase when number of features increase), but still can be useful. 
+
+Here we use $k=5$ folds. Models are evaluated on same folds.
 
 ```{r cv-for-gam-models}
 k <- 5
 
+set.seed(42) # use seed to reproduce results
 resulting_folds <- split_data_into_folds(df, k)
 dfWithMetrics <- data.frame(RMSE = c(), R_squared = c(), fold_number = c(), model_type = c())
 
@@ -371,14 +409,10 @@ for(i in 1:k)
   R_squared <- summary(gam_model_inter_for_folds)$r.sq
   dfWithMetrics <- rbind(dfWithMetrics, c(MAE, RMSE, R_squared, i, "GAM with interaction"))
 }
-
-##https://www.rdocumentation.org/packages/DAAG/versions/0.98/topics/cv.lm
-##https://rdrr.io/cran/gamclass/man/CVgam.html
-
 ```
 
 ```{r fix-data-types}
-## ToDo: why we end with numeric for this columns? It's unexpected...
+## [minor]ToDo: why we end with numeric for this columns? It's unexpected...
 colnames(dfWithMetrics) <- c("MAE","RMSE", "R_squared", "Fold_number", "Model")
 dfWithMetrics$MAE <- as.numeric(dfWithMetrics$MAE)
 dfWithMetrics$RMSE <- as.numeric(dfWithMetrics$RMSE)
@@ -392,12 +426,6 @@ RMSE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = RMSE, color =
   geom_point()+
   geom_line(aes(y = ave(RMSE, Model, FUN = mean, linetype="dashed")))
 
-
-R_squared_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = R_squared, color = Model, group = Model, shape = Model))+
-  ggtitle(TeX("$R^2$ per fold"))+
-  geom_point()+
-  geom_line(aes(y = ave(R_squared, Model, FUN = mean, linetype="dashed")))
-
 MAE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = MAE, color = Model, group = Model, shape = Model))+
   ggtitle(TeX("MAE per fold"))+
   geom_point()+
@@ -406,8 +434,20 @@ MAE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = MAE, color = M
 ggarrange(RMSE_plot, MAE_plot, common.legend = TRUE, legend = "bottom", ncol = 2, nrow=1)
 ```
 
+On plots we see the GAM has lower RMSE and MAE on average. Adding interaction to GAM seems to be pointless. They contribute nothing to the model. I suspect the number of parameters might be a bit too high or the way we developed *DAY_TIME* predictor it's not optimal. By contrast, we observe the ordinary LM model gain if we add interaction (despite increasing numbers of parameters). So maybe the idea was not so bad.
+
+
+From the $R^2$ perspective the both GAM models has significantly better score. However, the number of parameters used in models is notably greater. In fact they ordered by number of parameters. That's only reassures me to not use $R^2$ as reference here.
+
+
 ```{r plots-R-squared}
+R_squared_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = R_squared, color = Model, group = Model, shape = Model))+
+  ggtitle(TeX("$R^2$ per fold"))+
+  geom_point()+
+  geom_line(aes(y = ave(R_squared, Model, FUN = mean, linetype="dashed")))
 R_squared_plot
 ```
 
+
+To sum up, we would leave idea with adding interaction term to the model as it seems to be redundant and choose non linear one as best.
 
