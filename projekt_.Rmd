@@ -82,6 +82,10 @@ df$SERVICE_TIME <- as.numeric(df$END_DATE - df$START_DATE) / 60
 
 TODO SECTION: Add some basic plots e.g. location popularity chart etc.
 
+In order to gain a more thorough understanding of the data analyzed and to select models more effectively, we conducted a preliminary analysis. First, we created a graph below of the relationship between the miles variable and service time by initial destination.
+
+From the chart, we can see that some locations form a distinct group on the graph. For example, service which has starting point in Raleight (violet points) is concentrated mostly above line with service time equal to 20 minutes. This suggests taking this variable into account when building the model. In addition, service which has starting point in Durham concentrates around the straight miles equals to 10, making us think that the variable miles and starting location may be correlated.
+
 ```{r filter-local-data}
 filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham") | STOP %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham")) %>% filter(MILES < 20)
 
@@ -93,13 +97,21 @@ p <- ggplot(filtered_destination, aes(x=MILES, y=SERVICE_TIME, colour = factor(S
 p + geom_point()
 
 ```
+We also see that some locations occur more frequently than others, so we also created a histogram of the popularity of a location.
+
+```{r start-location-hist}
+ggplot(filtered_destination, aes(x = START)) +
+  geom_bar(fill = "blue", color = "black", alpha = 0.7)
+```
+We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
+
 
 
 # Data cleaning  
 
 To prepare the data for modelling, we must first clean it. To do this, we replace the NA values in the Purpose column with "Unknown". Other columns do not show missing values, however the start and stop columns show some "Unknown location" values. We also remove the last row of data, which is the summary.
 
-We added two columns to the raw data - Service time, which shows the duration of the service in minutes. To do this, we first standardized the format of the start and end date. Second added column is Daytime column, which indicates whether the service took place in the morning, evening, etc., we believe this variable can be significant for modelling. The short summary of data after cleansing is presented below.
+We added two columns to the raw data - Service time, which shows the duration of the service in minutes. To do this, we first standardized the format of the start and end date. Second added column is Daytime column, which indicates whether the service took place in rush hours (15-18) or regular hours (all others). We created this division based on the boxplot below. This division is also in line with our intuition. We believe this variable can be significant for modeling. The short summary of data after cleansing is presented below.
 
 
 
@@ -159,9 +171,10 @@ p <- ggplot(df, aes(x=factor(HOUR), y=SERVICE_TIME))
 p + geom_boxplot()
 
 ```
+Based on the boxplots, we see variation in service time by hour of the day, suggesting the importance of this variable
 
 
-In order to better understand the data, we have superimposed the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
+In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
 
 Once the data has been cleaned and subjected to preliminary analysis, we can begin to build models that predict service times. The first basic model we will create is a linear regression model with an explanatory variable - service time and an explanatory variable - miles. The linear regression model has the form 
 $$ f(X) = \beta_0 + \sum_{j=1}^{p} x_j \beta_j, $$
