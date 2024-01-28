@@ -114,21 +114,6 @@ filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex"
 We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
 
 
-```{r simple-plot}
-
-p <- ggplot(filtered_destination, aes(x=MILES, y=SERVICE_TIME, colour = factor(START)))
-p + geom_point()
-
-```
-We also see that some locations occur more frequently than others, so we also created a histogram of the popularity of a location.
-
-```{r start-location-hist}
-ggplot(filtered_destination, aes(x = START)) +
-  geom_bar(fill = "blue", color = "black", alpha = 0.7)
-```
-We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
-
-
 
 # Data cleaning  
 
