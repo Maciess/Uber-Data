@@ -138,22 +138,6 @@ any(is.na(hours)) ## FALSE
 hours[which(is.na(hours))]=-1 # seems to be redundant
 
 for (i in 1:length(df$END_DATE)){
-  if (hours[i] <= 5){
-    df$DAY_TIME[i]="Night"
-  }else if (hours[i] >= 19){
-    df$DAY_TIME[i] = "Evening"
-  }else if (hours[i] >=12){
-    df$DAY_TIME[i] = "Afternoon"
-  }else if(hours[i] >=6){
-    df$DAY_TIME[i] = "Morning"
-  }else if (hours[i] <= 0) {
-    df$DAY_TIME[i] = "Unknown"
-  }
-  
-}
-
-
-for (i in 1:length(df$END_DATE)){
   if ( 15 <= hours[i]  &  hours[i] <= 18){
     df$DAY_TIME[i]="2"
   }else {
