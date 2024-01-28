@@ -22,6 +22,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
 ```{r data}
 library(latex2exp)
 library(kableExtra)
+library(knitr)
 library(dplyr)
 library(ggplot2)
 library(ggpubr)
@@ -81,7 +82,9 @@ df$SERVICE_TIME <- as.numeric(df$END_DATE - df$START_DATE) / 60
 
 ## Preliminary analysis
 
-TODO SECTION: Add some basic plots e.g. location popularity chart etc.
+```{r all-location-on-map, fi.cap='The map with all posible location present in UberDataset', fig.align='center', out.width='70%'}
+knitr::include_graphics("location_distribution.png")
+```
 
 In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
 
