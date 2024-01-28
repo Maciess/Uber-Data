@@ -84,12 +84,35 @@ TODO SECTION: Add some basic plots e.g. location popularity chart etc.
 
 In order to gain a more thorough understanding of the data analyzed and to select models more effectively, we conducted a preliminary analysis. First, we created a graph below of the relationship between the miles variable and service time by initial destination.
 
+Analyzing the locations from the start and stop variables, we see that the frequency of occurrence of a given location is various. Therefore, we selected the 15 most frequently occurring locations and presented their frequency in a histogram. In our analyzed dataset, we also filtered out the most frequent locations. 
+
+```{r start-location-hist}
+
+t1 = table(factor(df$START))
+t2 = table(factor(df$STOP))
+sort(t2, decreasing = TRUE)
+
+top15_column1 <- head(sort(t1, decreasing = TRUE), 15)
+top15_column2 <- head(sort(t2, decreasing = TRUE), 15)
+
+top15 = top15_column1 + top15_column2
+
+df_top15 <- data.frame(Wartość = names(top15), Liczba_Wystąpień = as.numeric(top15))
+
+ggplot(df_top15, aes(x = Wartość, y = Liczba_Wystąpień)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Histogram of locations", x = "Location", y = "Number of appearances")
+
+```
+
 From the chart, we can see that some locations form a distinct group on the graph. For example, service which has starting point in Raleight (violet points) is concentrated mostly above line with service time equal to 20 minutes. This suggests taking this variable into account when building the model. In addition, service which has starting point in Durham concentrates around the straight miles equals to 10, making us think that the variable miles and starting location may be correlated.
 
 ```{r filter-local-data}
 filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham") | STOP %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham")) %>% filter(MILES < 20)
 
 ```
+We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
+
 
 ```{r simple-plot}
 
@@ -174,6 +197,21 @@ p + geom_boxplot()
 Based on the boxplots, we see variation in service time by hour of the day, suggesting the importance of this variable
 
 
+```{r boxplot-by-purpose-category}
+
+par(mfrow=c(2,1))
+p <- ggplot(df, aes(x=factor(CATEGORY), y=SERVICE_TIME))
+p + geom_boxplot()
+
+p <- ggplot(df, aes(x=factor(PURPOSE), y=SERVICE_TIME))
+p + geom_boxplot()
+
+```
+We do not see a significant difference in service time due to the breakdown by travel category.  The average
+time and distance between quantiles for personal trips are slightly smaller than for buisness trips.
+
+In the case of the purpose variable, we see differences between factors, so we will also consider this variable in later modeling. 
+
 In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
 
 Once the data has been cleaned and subjected to preliminary analysis, we can begin to build models that predict service times. The first basic model we will create is a linear regression model with an explanatory variable - service time and an explanatory variable - miles. The linear regression model has the form 
@@ -193,11 +231,12 @@ p + geom_point(colour="darkred")+
   geom_abline(intercept = coefficients(simlest_model)[1], slope = coefficients(simlest_model)[2])
 
 ```
-Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor. Below is presented an example of the model GAM.
-$$log\{E(y_i\} = \alpha + f_1(x_{1i}) + f_2(x_{2i}),$$
-where $f_1$ and $f_2$ are smooth functions of covariates $x_1$ and $x_2$. The log is an example of a link function. 
+The regression line captures the general trend of the data well, but we can see that a straight line is not the best method of prediction in this case. 
 
-First, we constructed GAM model using only miles as explanatory variable. In our second model we combined miles and hours as explanatory variables. The best model for these two variables is the model where we used the miles ad smoothing term.
+Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor.We can define with regression splinesusing an equation
+$$ f(x) = \beta_0 + \beta_1+x + \sum_{k=1}^K b_k(x - x_k) $$
+
+First, we constructed model using only miles as explanatory variable. In our second model we combined miles and hours as explanatory variables. The best model for these two variables is the model where we used the miles ad smoothing term. In this model we also testes the influence of different number of knots. As we know selection of number of knots i crucial, so we compared models with 2,10 and 30 number of knots. As we see first model is slightly different from the linear model, second seems to adjusts to the punctures correctly. Hovewer last model may present overfitting.
 
 
 ```{r model-with-hours}
@@ -216,20 +255,30 @@ x <- df$MILES
 
 xg <- seq(min(x), max(x), length = 1001)
 
-gam_model <- gam(y ~ s(x))
+gam_model <- gam(y ~ s(x,2))
+gam_model1 = gam(y ~ s(x,10))
+gam_model2 = gam(y ~ s(x,30))
+
 linear_model_using_gam <- gam(y~x)
 
-summary(gam_model)
+AIC(gam_model2)
 
 predicted <- predict(gam_model, newdata = data.frame(x = xg))
-
+predicted1 <- predict(gam_model1, newdata = data.frame(x = xg))
+predicted2 <- predict(gam_model2, newdata = data.frame(x = xg))
 
 orginal_points = data.frame(Y = y, X=x)
 predicted_points = data.frame(Y = predicted, X=xg)
+predicted_points1 = data.frame(Y = predicted1, X=xg)
+predicted_points2 = data.frame(Y = predicted2, X=xg)
+
 
 ggplot() +
-  geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
-  geom_line(data = predicted_points, aes(x=X, y=Y), colour = "darkblue")
+  geom_point(data = orginal_points , aes(x=X, y=Y), colour="black")+
+  geom_line(data = predicted_points, aes(x=X, y=Y), colour = "darkblue")+
+  geom_line(data = predicted_points1, aes(x=X, y=Y), colour = "red")+
+  geom_line(data = predicted_points2, aes(x=X, y=Y), colour = "darkgreen")
+ 
 ```
 
 
