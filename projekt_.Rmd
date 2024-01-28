@@ -24,7 +24,7 @@ library(latex2exp)
 library(kableExtra)
 library(dplyr)
 library(ggplot2)
-library(gridExtra)
+library(ggpubr)
 library(mgcv)
 library(gam)
 source("helpers.R")
@@ -282,7 +282,7 @@ ggplot() +
 ```
 
 
-
+## Linearity test
 
 ```{r test-for-linearity}
 
@@ -291,6 +291,8 @@ anova(linear_model_using_gam, gam_model, test="F")$"Pr(>F)"[2]
 ## maciek opisze co jest uzywane w testowaniu i jakie som wnioski
 
 ```
+
+## Gam with interactions beetwen day time and distance. 
 
 ```{r gam-with-interactions-model}
 y <- df$SERVICE_TIME
@@ -321,6 +323,9 @@ ggplot() +
 ```
 
 
+## Test framework to automatic feature selection 
+<!-- section created by Ewa -->
+
 To see if the other variables in the data set affect service time we used the function step. Gam from the gam library. This method creates all possible models based on possible variables and calculates the **AIC** for each model. The result is a model that uses the variables hour, start, stop and miles as smoothing term.
 
 ```{r step-gam-all-variables}
@@ -349,7 +354,6 @@ We use k-folds cross-validation to evaluate **RMSE**, $R^2$, and their average. 
 k <- 5
 
 resulting_folds <- split_data_into_folds(df, k)
-
 dfWithMetrics <- data.frame(RMSE = c(), R_squared = c(), fold_number = c(), model_type = c())
 
 
@@ -361,25 +365,42 @@ for(i in 1:k)
   train_data <- resulting_folds[ seq(k)[-i]]
   train_data <- do.call(rbind, train_data)
 
-  ## simple model
+  # simple lm model
   simlest_model_for_folds <- lm(data = train_data, SERVICE_TIME~MILES)
   predicted <- predict(simlest_model_for_folds, newdata = test_set)
-  RMSE <- Metrics::rmse(actual = test_set$SERVICE_TIME, predicted = predicted)
   
+  MAE <- Metrics::mae(actual = test_set$SERVICE_TIME, predicted = predicted)
+  RMSE <- Metrics::rmse(actual = test_set$SERVICE_TIME, predicted = predicted)
   R_squared <- summary(simlest_model_for_folds)$r.sq
-  dfWithMetrics <- rbind(dfWithMetrics, c(RMSE, R_squared, i, "Simplest lm")) 
+  dfWithMetrics <- rbind(dfWithMetrics, c(MAE, RMSE, R_squared, i, "LM")) 
+  
+  ## simple lm but with iteraction
+  lm_with_interaction_for_folds <- lm(data = train_data, SERVICE_TIME~MILES*DAY_TIME)
+  predicted <- predict(lm_with_interaction_for_folds, newdata = test_set)
+  
+  MAE <- Metrics::mae(actual = test_set$SERVICE_TIME, predicted = predicted)
+  RMSE <- Metrics::rmse(actual = test_set$SERVICE_TIME, predicted = predicted)
+  R_squared <- summary(lm_with_interaction_for_folds)$r.sq
+  dfWithMetrics <- rbind(dfWithMetrics, c(MAE, RMSE, R_squared, i, "LM with interaction")) 
   
   ## gam model
   gam_model_for_folds <- mgcv::gam(data = train_data, SERVICE_TIME ~ s(MILES))
   predicted <- predict(gam_model_for_folds, newdata = test_set)
   
+  MAE <- Metrics::mae(actual = test_set$SERVICE_TIME, predicted = predicted)
   RMSE <- Metrics::rmse(actual = test_set$SERVICE_TIME, predicted = predicted)
   R_squared <- summary(gam_model_for_folds)$r.sq
-  dfWithMetrics <- rbind(dfWithMetrics, c(RMSE, R_squared, i, "Gam model"))  
+  dfWithMetrics <- rbind(dfWithMetrics, c(MAE, RMSE, R_squared, i, "GAM"))  
   
+  ## gam model with interaction
   
-  #What metrics we want to calculate?
-  #So far only RMSE, R^2
+  gam_model_inter_for_folds <- mgcv::gam(data = train_data, SERVICE_TIME ~ s(MILES, by = factor(DAY_TIME)))
+  predicted <- predict(gam_model_inter_for_folds, newdata = test_set)
+  
+  MAE <- Metrics::mae(actual = test_set$SERVICE_TIME, predicted = predicted)
+  RMSE <- Metrics::rmse(actual = test_set$SERVICE_TIME, predicted = predicted)
+  R_squared <- summary(gam_model_inter_for_folds)$r.sq
+  dfWithMetrics <- rbind(dfWithMetrics, c(MAE, RMSE, R_squared, i, "GAM with interaction"))
 }
 
 ##https://www.rdocumentation.org/packages/DAAG/versions/0.98/topics/cv.lm
@@ -388,19 +409,19 @@ for(i in 1:k)
 ```
 
 ```{r fix-data-types}
+## ToDo: why we end with numeric for this columns? It's unexpected...
+colnames(dfWithMetrics) <- c("MAE","RMSE", "R_squared", "Fold_number", "Model")
+dfWithMetrics$MAE <- as.numeric(dfWithMetrics$MAE)
 dfWithMetrics$RMSE <- as.numeric(dfWithMetrics$RMSE)
 dfWithMetrics$R_squared <- as.numeric(dfWithMetrics$R_squared)
 ```
 
 
 ```{r plot-metrics}
-colnames(dfWithMetrics) <- c("RMSE", "R_squared", "Fold_number", "Model")
-
 RMSE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = RMSE, color = Model, shape = Model, group = Model))+
   ggtitle("RMSE per fold")+
   geom_point()+
   geom_line(aes(y = ave(RMSE, Model, FUN = mean, linetype="dashed")))
-
 
 
 R_squared_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = R_squared, color = Model, group = Model, shape = Model))+
@@ -408,7 +429,16 @@ R_squared_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = R_square
   geom_point()+
   geom_line(aes(y = ave(R_squared, Model, FUN = mean, linetype="dashed")))
 
-grid.arrange(RMSE_plot, R_squared_plot, ncol = 2)
+MAE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = MAE, color = Model, group = Model, shape = Model))+
+  ggtitle(TeX("MAE per fold"))+
+  geom_point()+
+  geom_line(aes(y = ave(MAE, Model, FUN = mean, linetype="dashed")))
 
+ggarrange(RMSE_plot, MAE_plot, common.legend = TRUE, legend = "bottom", ncol = 2, nrow=1)
 ```
+
+```{r plots-R-squared}
+R_squared_plot
+```
+
 
