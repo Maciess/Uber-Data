@@ -274,7 +274,7 @@ ggplot() +
 
 To see if the other variables in the data set affect service time we used the function step. Gam from the gam library. This method creates all possible models based on possible variables and calculates the **AIC** for each model. The result is a model that uses the variables hour, start, stop and miles as smoothing term.
 
-```{r step.gam-all-variables}
+```{r step-gam-all-variables}
 fitInitial = gam(y ~ df$MILES + df$HOUR + df$CATEGORY+df$START +df$STOP +df$PURPOSE)
 
 stepFit <- step.Gam(fitInitial,
@@ -316,7 +316,7 @@ for(i in 1:k)
   simlest_model_for_folds <- lm(data = train_data, SERVICE_TIME~MILES)
   predicted <- predict(simlest_model_for_folds, newdata = test_set)
   RMSE <- Metrics::rmse(actual = test_set$SERVICE_TIME, predicted = predicted)
-  print(RMSE)
+  
   R_squared <- summary(simlest_model_for_folds)$r.sq
   dfWithMetrics <- rbind(dfWithMetrics, c(RMSE, R_squared, i, "Simplest lm")) 
   
@@ -330,6 +330,7 @@ for(i in 1:k)
   
   
   #What metrics we want to calculate?
+  #So far only RMSE, R^2
 }
 
 ##https://www.rdocumentation.org/packages/DAAG/versions/0.98/topics/cv.lm
@@ -341,16 +342,16 @@ for(i in 1:k)
 ```{r plot-metrics}
 colnames(dfWithMetrics) <- c("RMSE", "R_squared", "Fold_number", "Model")
 
-RMSE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = RMSE, color = Model, shape = Model))+
+RMSE_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = RMSE, color = Model, shape = Model, group = Model))+
   ggtitle("RMSE per fold")+
   geom_point()+
-  geom_hline(yintercept=mean(RMSE), linetype="dashed", color = "red")
+  geom_line(aes(y = ave(RMSE, Model, FUN = median, linetype="dashed")))
 
 
-R_squared_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = R_squared, color = Model, shape = Model))+
+R_squared_plot <- ggplot(data = dfWithMetrics, aes(x = Fold_number, y = R_squared, color = Model, group = Model, shape = Model))+
   ggtitle(TeX("$R^2$ per fold"))+
   geom_point()+
-  geom_line(aes(y = ave(R_squared, Model, FUN = median)))
+  geom_line(aes(y = ave(R_squared, Model, FUN = median, linetype="dashed")))
 
 grid.arrange(RMSE_plot, R_squared_plot, ncol = 2)
 
