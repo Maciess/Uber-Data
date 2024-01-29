@@ -1,6 +1,6 @@
 ---
-title: "| ![](logo.png){width=6in} \\vspace{0.2in} \n`r format(params$term)` Project
-  proposal\n \\vspace{0.1in} "
+title: "| ![](logo.png){width=6in} \\vspace{0.2in} \n`r format(params$term)` Uber app delivery time estimation
+\n \\vspace{0.1in} "
 author:
 - Maciej Szczutko
 - Ewa Stebel
@@ -9,7 +9,6 @@ output:
   pdf_document: default
   html_document:
     df_print: paged
-subtitle: Uber app delivery time estimation
 params:
   term: ''
 ---
@@ -89,7 +88,7 @@ knitr::include_graphics("location_distribution.png")
 In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
 
 
-In order to gain a more thorough understanding of the data analyzed and to select models more effectively, we conducted a preliminary analysis. First, we created a graph below of the relationship between the miles variable and service time by initial destination.
+In order to gain a more thorough understanding of the data  analyzed and to select models more effectively, we conducted a preliminary analysis. First, we created a graph below of the relationship between the miles variable and service time by initial destination.
 
 Analyzing the locations from the start and stop variables, we see that the frequency of occurrence of a given location is various. Therefore, we selected the 15 most frequently occurring locations and presented their frequency in a histogram. In our analyzed dataset, we also filtered out the most frequent locations. 
 
@@ -334,11 +333,15 @@ predicted_2 <- predict(gam_model, newdata = data.frame(x = xg, interaction_term 
 orginal_points = data.frame(Y = y, X=x)
 predicted_points = data.frame(Y1 = predicted_1, Y2=predicted_2, X=xg)
 
-ggplot() +
-  geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
-  geom_line(data = predicted_points, aes(x=X, y=Y1), colour = "darkblue")+
-  geom_line(data = predicted_points, aes(x=X, y=Y2), colour = "darkgreen")
+# ggplot() +
+#   geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
+#   geom_line(data = predicted_points, aes(x=X, y=Y1), colour = "darkblue")+
+#   geom_line(data = predicted_points, aes(x=X, y=Y2), colour = "darkgreen")
 
+```
+
+```{r old-plot-for-interaction, fi.cap='Trajectory for different DAY_TIME', fig.align='center', out.width='70%'}
+knitr::include_graphics("old_plot_for_interactions.png")
 ```
 
 
