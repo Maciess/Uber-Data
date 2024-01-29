@@ -98,20 +98,23 @@ top15_column2 <- head(sort(t2, decreasing = TRUE), 15)
 top15 = top15_column1 + top15_column2
 
 df_top15 <- data.frame(Wartość = names(top15), Liczba_Wystąpień = as.numeric(top15))
+df_top15$Wartość[which(df_top15$Wartość=="Kar?chi")] = "Karachi"
 
 ggplot(df_top15, aes(x = Wartość, y = Liczba_Wystąpień)) +
   geom_bar(stat = "identity", fill = "skyblue") +
-  labs(title = "Histogram of locations", x = "Location", y = "Number of appearances")
+  labs(title = "Histogram of locations", x = "Location", y = "Number of appearances")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
+We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
 
-From the chart, we can see that some locations form a distinct group on the graph. For example, service which has starting point in Raleight (violet points) is concentrated mostly above line with service time equal to 20 minutes. This suggests taking this variable into account when building the model. In addition, service which has starting point in Durham concentrates around the straight miles equals to 10, making us think that the variable miles and starting location may be correlated.
+
 
 ```{r filter-local-data}
 filtered_destination <- df %>% filter(START %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham") | STOP %in% c("Cary", "Morrisville", "Apex", "Raleigh", "Durham")) %>% filter(MILES < 20)
 
 ```
-We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
+
 
 
 ```{r simple-plot}
@@ -120,13 +123,9 @@ p <- ggplot(filtered_destination, aes(x=MILES, y=SERVICE_TIME, colour = factor(S
 p + geom_point()
 
 ```
-We also see that some locations occur more frequently than others, so we also created a histogram of the popularity of a location.
+From the chart, we can see that some locations form a distinct group on the graph. For example, service which has starting point in Raleight (violet points) is concentrated mostly above line with service time equal to 20 minutes. This suggests taking this variable into account when building the model. In addition, service which has starting point in Durham concentrates around the straight miles equals to 10, making us think that the variable miles and starting location may be correlated.
 
-```{r start-location-hist2}
-ggplot(filtered_destination, aes(x = START)) +
-  geom_bar(fill = "blue", color = "black", alpha = 0.7)
-```
-We see that the Cary location occurs much more frequently than the others. The Raleight, Durcham, Morrisville and Apex locations appear frequently, while the other locations appear sporadically.
+
 
 # Data cleaning  
 
@@ -161,7 +160,7 @@ for (i in 1:length(df$END_DATE)){
 
 summary(df)
 ```
-
+We also analyzed a newly created variable - hours and day time.
 ```{r plot-fill-by-hours}
 
 df$HOUR <- hours
@@ -176,8 +175,9 @@ p <- ggplot(df, aes(x=factor(HOUR), y=SERVICE_TIME))
 p + geom_boxplot()
 
 ```
-Based on the boxplots, we see variation in service time by hour of the day, suggesting the importance of this variable
+We are not able to see a clear division by time of day on the scatterplot, however based on the boxplot, we see variation in service time by hour of the day, which suggest the importance of this variable.
 
+Then, we checked the other two variables included in the dataset - purpose and category and their impact on service time.
 
 ```{r boxplot-by-purpose-category}
 
@@ -186,7 +186,8 @@ p <- ggplot(df, aes(x=factor(CATEGORY), y=SERVICE_TIME))
 p + geom_boxplot()
 
 p <- ggplot(df, aes(x=factor(PURPOSE), y=SERVICE_TIME))
-p + geom_boxplot()
+p + geom_boxplot()+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
 We do not see a significant difference in service time due to the breakdown by travel category.  The average
@@ -195,6 +196,8 @@ time and distance between quantiles for personal trips are slightly smaller than
 In the case of the purpose variable, we see differences between factors, so we will also consider this variable in later modeling. 
 
 In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
+
+## Models
 
 Once the data has been cleaned and subjected to preliminary analysis, we can begin to build models that predict service times. The first basic model we will create is a linear regression model with an explanatory variable - service time and an explanatory variable - miles. The linear regression model has the form 
 $$ f(X) = \beta_0 + \sum_{j=1}^{p} x_j \beta_j, $$
