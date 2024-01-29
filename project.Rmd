@@ -16,7 +16,7 @@ params:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.align="center")
 ```
 
 ```{r data}
@@ -220,19 +220,25 @@ where the $\beta_j$ ' are unknown parameters or coefficients.
 This is a basic method, but allows us an easy interpretation of regressors effects.
 
 
+## Simple linear model
+
 ```{r simple-reression-model}
 simlest_model <- lm(data = df, SERVICE_TIME~MILES)
 
 summary(simlest_model)
+```
 
+```{r plot-for-first-model, fig.cap="Ordinary linear model", out.width="70%"}
 p <- ggplot(df, aes(x=MILES, y=SERVICE_TIME))
 p + geom_point(colour="darkred")+
   geom_abline(intercept = coefficients(simlest_model)[1], slope = coefficients(simlest_model)[2])
-
 ```
+
 The regression line captures the general trend of the data well, but we can see that a straight line is not the best method of prediction in this case. 
 
-Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor.We can define with regression splinesusing an equation
+## Generalized Additive Model
+
+Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor.We can define with regression splines using an equation
 $$ f(x) = \beta_0 + \beta_1+x + \sum_{k=1}^K b_k(x - x_k) $$
 
 We would like to compare a simple linear regression model and a model with an additional hours variable and applied smoothing on the miles variable. AIC value of simple model is equal to 2 283.44, while AIC value of second model equals 2 269.84. With this comparison, we can conclude that the use of splines and day_time variable made the model better fit the data.
@@ -262,8 +268,6 @@ gam_model <- gam(y ~ s(x,2))
 gam_model1 = gam(y ~ s(x,10))
 gam_model2 = gam(y ~ s(x,30))
 
-linear_model_using_gam <- gam(y~x)
-
 AIC(gam_model2)
 
 predicted <- predict(gam_model, newdata = data.frame(x = xg))
@@ -277,9 +281,9 @@ predicted_points2 = data.frame(Y = predicted2, X=xg)
 
 
 ggplot() +
-  geom_point(data = orginal_points , aes(x=X, y=Y), colour="black")+
+  geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
   geom_line(data = predicted_points, aes(x=X, y=Y), colour = "darkblue")+
-  geom_line(data = predicted_points1, aes(x=X, y=Y), colour = "red")+
+  geom_line(data = predicted_points1, aes(x=X, y=Y), colour = 450)+
   geom_line(data = predicted_points2, aes(x=X, y=Y), colour = "darkgreen")
  
 ```
@@ -288,7 +292,7 @@ ggplot() +
 ## Linearity test
 
 ```{r test-for-linearity}
-
+linear_model_using_gam <- gam(y~x)
 anova(linear_model_using_gam, gam_model, test="F")$"Pr(>F)"[2]
 
 ## maciek opisze co jest uzywane w testowaniu i jakie som wnioski
