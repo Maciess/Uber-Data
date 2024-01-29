@@ -16,7 +16,7 @@ params:
 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.align="center")
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE, fig.align="center", fig.align='center', out.width='70%')
 ```
 
 ```{r data}
@@ -241,7 +241,12 @@ The regression line captures the general trend of the data well, but we can see 
 Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor.We can define with regression splines using an equation
 $$ f(x) = \beta_0 + \beta_1+x + \sum_{k=1}^K b_k(x - x_k) $$
 
+<<<<<<< HEAD
 We would like to compare a simple linear regression model and a model with an additional hours variable and applied smoothing on the miles variable. AIC value of simple model is equal to 2 283.44, while AIC value of second model equals 2 269.84. With this comparison, we can conclude that the use of splines and day_time variable made the model better fit the data.
+=======
+First, we constructed model using only miles as explanatory variable. In our second model we combined miles and hours as explanatory variables. The best model for these two variables is the model where we used the miles and smoothing term. In this model we also testes the influence of different number of knots. As we know selection of number of knots is crucial, so we compared models with 2, 10 and 30 number of knots. As we see first model is slightly different from the linear model, second seems to adjusts to the punctures correctly. However last model may present overfitting. The conclusion is to delegate the decision about knots number for model as we don't have reason to do it manually.
+
+>>>>>>> ad655d2 (Add plot legends)
 
 ```{r model-with-hours}
 ##ewa
@@ -268,8 +273,6 @@ gam_model <- gam(y ~ s(x,2))
 gam_model1 = gam(y ~ s(x,10))
 gam_model2 = gam(y ~ s(x,30))
 
-AIC(gam_model2)
-
 predicted <- predict(gam_model, newdata = data.frame(x = xg))
 predicted1 <- predict(gam_model1, newdata = data.frame(x = xg))
 predicted2 <- predict(gam_model2, newdata = data.frame(x = xg))
@@ -281,23 +284,41 @@ predicted_points2 = data.frame(Y = predicted2, X=xg)
 
 
 ggplot() +
-  geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred")+
-  geom_line(data = predicted_points, aes(x=X, y=Y), colour = "darkblue")+
-  geom_line(data = predicted_points1, aes(x=X, y=Y), colour = 450)+
-  geom_line(data = predicted_points2, aes(x=X, y=Y), colour = "darkgreen")
+  geom_point(data = orginal_points , aes(x=X, y=Y), colour="darkred", size = 1)+
+  geom_line(data = predicted_points, aes(x=X, y=Y, colour = "k=2"))+
+  geom_line(data = predicted_points1, aes(x=X, y=Y, colour = "k=10"))+
+  geom_line(data = predicted_points2, aes(x=X, y=Y, colour = "k=30"))+
+ scale_colour_manual("", 
+                      breaks = c("k=2", "k=10", "k=30"),
+                      values = c("darkblue", "purple", "darkgreen"))+
+  ggtitle("Models with differents number of knots")+
+  xlab("MILES")+
+  ylab("TIME")
  
 ```
 
 
 ## Linearity test
 
-```{r test-for-linearity}
+Now we will perform test for linearity of $f$ function. Recall:
+We assume that relation is in the form
+
+$$
+y_i=f\left(x_i\right)+\varepsilon_i, \quad \varepsilon_i \stackrel{\text { ind. }}{\sim} N\left(0, \sigma_{\varepsilon}^2\right)
+$$
+
+and we consider following hypothesis
+
+$$H_0: f \text{ is linear versus }H_1: f\text{ is a smooth non-linear function.}$$
+
+We will use $F$ test. 
+
+```{r test-for-linearity, echo=TRUE}
 linear_model_using_gam <- gam(y~x)
 anova(linear_model_using_gam, gam_model, test="F")$"Pr(>F)"[2]
-
-## maciek opisze co jest uzywane w testowaniu i jakie som wnioski
-
 ```
+Based on p value, using standard $\alpha=0.05$ confidence level, we reject $H_0$. The relation between SERVICE_TIME and MILES isn't strictly linear and using smoothing term should lead us to better model. In next section we will try to add interaction with previously developed feature - DAY_TIME.
+
 
 ## Gam with interactions beetwen day time and distance. 
 
