@@ -88,13 +88,6 @@ knitr::include_graphics("location_distribution.png")
 
 In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
 
-```{r, out.width='80%', fig.align='center'}
-
-path <- "mapa_screen.png"
-photo <- image_read(path)
-
-knitr::include_graphics(path)
-```
 
 In order to gain a more thorough understanding of the data analyzed and to select models more effectively, we conducted a preliminary analysis. First, we created a graph below of the relationship between the miles variable and service time by initial destination.
 
@@ -241,12 +234,10 @@ The regression line captures the general trend of the data well, but we can see 
 Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor.We can define with regression splines using an equation
 $$ f(x) = \beta_0 + \beta_1+x + \sum_{k=1}^K b_k(x - x_k) $$
 
-<<<<<<< HEAD
+
 We would like to compare a simple linear regression model and a model with an additional hours variable and applied smoothing on the miles variable. AIC value of simple model is equal to 2 283.44, while AIC value of second model equals 2 269.84. With this comparison, we can conclude that the use of splines and day_time variable made the model better fit the data.
-=======
 First, we constructed model using only miles as explanatory variable. In our second model we combined miles and hours as explanatory variables. The best model for these two variables is the model where we used the miles and smoothing term. In this model we also testes the influence of different number of knots. As we know selection of number of knots is crucial, so we compared models with 2, 10 and 30 number of knots. As we see first model is slightly different from the linear model, second seems to adjusts to the punctures correctly. However last model may present overfitting. The conclusion is to delegate the decision about knots number for model as we don't have reason to do it manually.
 
->>>>>>> ad655d2 (Add plot legends)
 
 ```{r model-with-hours}
 ##ewa
