@@ -29,6 +29,7 @@ library(mgcv)
 library(gam)
 source("helpers.R")
 library(Metrics)
+library(magick)
 UberDataset <- read.csv("UberDataset.csv")
 ```
 
@@ -81,6 +82,16 @@ df$SERVICE_TIME <- as.numeric(df$END_DATE - df$START_DATE) / 60
 ## Preliminary analysis
 
 TODO SECTION: Add some basic plots e.g. location popularity chart etc.
+
+In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
+
+```{r, out.width='80%', fig.align='center'}
+
+path <- "mapa_screen.png"
+photo <- image_read(path)
+
+knitr::include_graphics(path)
+```
 
 In order to gain a more thorough understanding of the data analyzed and to select models more effectively, we conducted a preliminary analysis. First, we created a graph below of the relationship between the miles variable and service time by initial destination.
 
@@ -195,11 +206,11 @@ time and distance between quantiles for personal trips are slightly smaller than
 
 In the case of the purpose variable, we see differences between factors, so we will also consider this variable in later modeling. 
 
-In order to better understand the data, we have put the locations from the dataset onto a map of the United States. On the map, we can see that the locations are divided into a pair of clusters, between which the average delivery time may also vary.
+
 
 ## Models
 
-Once the data has been cleaned and subjected to preliminary analysis, we can begin to build models that predict service times. The first basic model we will create is a linear regression model with an explanatory variable - service time and an explanatory variable - miles. The linear regression model has the form 
+Once the data has been cleaned and subjected to preliminary analysis, we can begin to build models that predict service times. The first basic model we will create is a linear regression model with an explained variable - service time and an explanatory variable - miles. The linear regression model has the form 
 $$ f(X) = \beta_0 + \sum_{j=1}^{p} x_j \beta_j, $$
 where the $\beta_j$ ' are unknown parameters or coefficients.
 
@@ -221,15 +232,19 @@ The regression line captures the general trend of the data well, but we can see 
 Next, we use gam function from **mgcv** package to create Generalized Additive Model. It is a Generalized Linear Model (GLM) in which the linear predictor is given by a specified sum of smooth functions of the covariates plus a conventional parametric component of the linear predictor.We can define with regression splinesusing an equation
 $$ f(x) = \beta_0 + \beta_1+x + \sum_{k=1}^K b_k(x - x_k) $$
 
-First, we constructed model using only miles as explanatory variable. In our second model we combined miles and hours as explanatory variables. The best model for these two variables is the model where we used the miles ad smoothing term. In this model we also testes the influence of different number of knots. As we know selection of number of knots i crucial, so we compared models with 2,10 and 30 number of knots. As we see first model is slightly different from the linear model, second seems to adjusts to the punctures correctly. Hovewer last model may present overfitting.
-
+We would like to compare a simple linear regression model and a model with an additional hours variable and applied smoothing on the miles variable. AIC value of simple model is equal to 2 283.44, while AIC value of second model equals 2 269.84. With this comparison, we can conclude that the use of splines and day_time variable made the model better fit the data.
 
 ```{r model-with-hours}
 ##ewa
-gam_model_hours <- gam(df$SERVICE_TIME ~ s(df$MILES) + df$HOUR)
+gam_model_hours <- gam(df$SERVICE_TIME ~ s(df$MILES) + df$DAY_TIME)
 summary(gam_model_hours)
 
 ```
+
+Then, we would like to test the influence of different number of knots in model with only miles as smoothing variable.  As we know selection of number of knots i crucial, so we compared models with 2, 10 and 30 number of knots. As we see first model is slightly different from the linear model,so, as we noted earlier, the model only captures the general trend. Second model seems to adjusts to the punctures correctly. Hovewer last model may present overfitting, because is sensitive to the impact of single observations.
+
+
+
 
 
 
